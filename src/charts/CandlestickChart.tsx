@@ -30,28 +30,28 @@ export default function CandlestickChart({ data, height = 400, className = "" }:
         height,
         layout: {
           background: { color: "transparent" },
-          textColor: "#94a3b8",
+          textColor: "#8a7a55",
         },
         grid: {
           vertLines: { color: "rgba(255,255,255,0.05)" },
           horzLines: { color: "rgba(255,255,255,0.05)" },
         },
         rightPriceScale: {
-          borderColor: "rgba(255,255,255,0.1)",
+          borderColor: "rgba(245,197,24,0.1)",
           scaleMargins: { top: 0.1, bottom: 0.2 },
         },
         timeScale: {
-          borderColor: "rgba(255,255,255,0.1)",
+          borderColor: "rgba(245,197,24,0.1)",
           timeVisible: true,
           secondsVisible: false,
         },
       });
 
       const candleSeries = chart.addSeries(CandlestickSeries, {
-        upColor: "#00ff88",
-        downColor: "#ff5252",
-        borderUpColor: "#00ff88",
-        borderDownColor: "#ff5252",
+        upColor: "#39d98a",
+        downColor: "#ff6b6b",
+        borderUpColor: "#39d98a",
+        borderDownColor: "#ff6b6b",
       });
 
       candleSeries.setData(

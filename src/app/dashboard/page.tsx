@@ -9,6 +9,8 @@ import CandlestickChart from "@/charts/CandlestickChart";
 import LineChart from "@/charts/LineChart";
 import VolumeChart from "@/charts/VolumeChart";
 import MarketHeatmap from "@/charts/MarketHeatmap";
+import AnimatedNumber from "@/components/AnimatedNumber";
+import AIMarketBrief from "@/components/AIMarketBrief";
 import { useIndices, useMovers, useNifty50 } from "@/hooks/useMarketData";
 
 const RANGE_OPTIONS = ["1D", "1W", "1M", "6M", "1Y", "5Y"];
@@ -23,6 +25,7 @@ export default function DashboardPage() {
   const [candleData, setCandleData] = useState<{ time: number; open: number; high: number; low: number; close: number; volume?: number }[]>([]);
   const [lineData, setLineData] = useState<{ x: number; y: number }[]>([]);
   const [chartLoading, setChartLoading] = useState(true);
+  const validIndices = indices.filter((x) => Number.isFinite(x.value) && x.value > 0).slice(0, 4);
 
   const fetchCharts = useCallback(async () => {
     setChartLoading(true);
@@ -63,16 +66,34 @@ export default function DashboardPage() {
     <div className="min-h-screen relative">
       <div className="fixed inset-0 grid-bg z-0" />
       <ParticleBackground />
+      
+      {/* Dynamic Subpage Orbs */}
+      <motion.div
+        className="fixed top-1/4 -left-32 w-96 h-96 bg-cyan-600/20 rounded-full blur-[120px] pointer-events-none z-0"
+        animate={{ y: [0, 50, 0], x: [0, 30, 0], opacity: [0.5, 0.8, 0.5] }}
+        transition={{ duration: 15, repeat: Infinity, ease: "easeInOut" }}
+      />
+      <motion.div
+        className="fixed bottom-1/4 -right-32 w-96 h-96 bg-purple-600/20 rounded-full blur-[120px] pointer-events-none z-0"
+        animate={{ y: [0, -50, 0], x: [0, -30, 0], opacity: [0.5, 0.8, 0.5] }}
+        transition={{ duration: 18, repeat: Infinity, ease: "easeInOut", delay: 2 }}
+      />
+
       <StockTicker />
 
       <div className="relative z-10 py-8 px-6 max-w-7xl mx-auto">
         <div className="flex flex-wrap justify-between items-center gap-4 mb-8">
-          <motion.h1 initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="text-4xl font-bold gradient-text">
+          <motion.h1
+            initial={{ opacity: 0, x: -30 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.7, ease: "easeOut" }}
+            className="text-4xl font-bold gradient-text"
+          >
             Live Market Dashboard
           </motion.h1>
           <motion.button
             onClick={handleRefresh}
-            className="px-4 py-2 rounded-lg glass border border-cyan-500/30 text-cyan-400 text-sm font-medium"
+            className="px-4 py-2 rounded-lg glass border border-white/20 text-white text-sm font-medium hover:bg-white/5"
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
           >
@@ -80,30 +101,58 @@ export default function DashboardPage() {
           </motion.button>
         </div>
 
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.1 }}
+          className="mb-8"
+        >
+          <AIMarketBrief />
+        </motion.div>
+
         {/* Indices */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          {(indicesLoading && indices.length === 0 ? [{ symbol: "—", value: 0, change: 0, changePercent: 0 }] : indices).slice(0, 4).map((index, i) => (
+        <motion.div 
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-50px" }}
+          transition={{ duration: 0.5 }}
+          className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8"
+        >
+          {(indicesLoading && validIndices.length === 0 ? [{ symbol: "—", value: 0, change: 0, changePercent: 0 }] : validIndices).map((index, i) => (
             <GlassCard key={index.symbol} delay={i * 0.05}>
               <p className="text-sm text-zinc-400">{index.symbol}</p>
-              {indicesLoading && indices.length === 0 ? (
+              {indicesLoading && validIndices.length === 0 ? (
                 <div className="h-8 w-24 bg-white/5 rounded animate-pulse mt-1" />
               ) : (
                 <>
                   <p className="text-2xl font-bold text-white">
-                    {index.value.toLocaleString("en-IN", { maximumFractionDigits: 2 })}
+                    <AnimatedNumber value={index.value} />
                   </p>
-                  <p className={`text-sm ${index.change >= 0 ? "text-emerald-400" : "text-red-400"}`}>
-                    {index.change >= 0 ? "+" : ""}{index.change.toFixed(2)} ({index.changePercent >= 0 ? "+" : ""}
-                    {index.changePercent.toFixed(2)}%)
+                  <p className={`text-sm flex gap-1 ${index.change >= 0 ? "text-emerald-400" : "text-red-400"}`}>
+                    {index.change >= 0 ? "+" : ""}
+                    <AnimatedNumber value={index.change} formatFunc={(v) => v.toFixed(2)} /> 
+                    ({index.changePercent >= 0 ? "+" : ""}
+                    <AnimatedNumber value={index.changePercent} formatFunc={(v) => v.toFixed(2)} />%)
                   </p>
                 </>
               )}
             </GlassCard>
           ))}
-        </div>
+          {!indicesLoading && validIndices.length === 0 && (
+            <div className="col-span-2 lg:col-span-4 text-zinc-500 text-sm px-2">
+              Live index feed temporarily unavailable. Click Refresh in a few seconds.
+            </div>
+          )}
+        </motion.div>
 
         {/* Main Chart + Volume */}
-        <GlassCard className="mb-8">
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-50px" }}
+          transition={{ duration: 0.6 }}
+        >
+          <GlassCard className="mb-8">
           <div className="flex flex-wrap justify-between items-center mb-6 gap-4">
             <div className="flex items-center gap-3">
               <h2 className="text-xl font-bold">
@@ -113,7 +162,7 @@ export default function DashboardPage() {
                 <button
                   key={s}
                   onClick={() => setChartSymbol(s)}
-                  className={`px-3 py-1 rounded text-sm ${chartSymbol === s ? "bg-cyan-500/20 text-cyan-400" : "text-zinc-400"}`}
+                  className={`px-3 py-1 rounded text-sm transition-colors ${chartSymbol === s ? "bg-white/20 text-white" : "text-zinc-400 hover:text-zinc-200"}`}
                 >
                   {s}
                 </button>
@@ -124,8 +173,8 @@ export default function DashboardPage() {
                 <motion.button
                   key={r}
                   onClick={() => setRange(r)}
-                  className={`px-3 py-2 rounded-lg text-sm font-medium ${
-                    range === r ? "bg-cyan-500/20 text-cyan-400 border border-cyan-500/50" : "glass text-zinc-400 hover:text-white"
+                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    range === r ? "bg-white/20 text-white border border-white/30" : "glass text-zinc-400 hover:text-white hover:bg-white/5"
                   }`}
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.98 }}
@@ -150,30 +199,43 @@ export default function DashboardPage() {
           ) : (
             <div className="h-[400px] flex items-center justify-center text-zinc-500">No chart data available</div>
           )}
-        </GlassCard>
+          </GlassCard>
+        </motion.div>
 
         {/* Line charts */}
-        <div className="grid lg:grid-cols-2 gap-8 mb-8">
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-50px" }}
+          transition={{ duration: 0.6 }}
+          className="grid lg:grid-cols-2 gap-8 mb-8"
+        >
           <GlassCard>
-            <h3 className="text-lg font-bold mb-4">SENSEX Trend</h3>
+            <h3 className="text-lg font-bold mb-4 text-white">SENSEX Trend</h3>
             {lineData.length > 0 ? (
-              <LineChart data={lineData} color="#bf00ff" height={250} />
+              <LineChart data={lineData} color="#ffffff" height={250} />
             ) : (
               <div className="h-[250px] flex items-center justify-center text-zinc-500">No data</div>
             )}
           </GlassCard>
           <GlassCard>
-            <h3 className="text-lg font-bold mb-4">NIFTY Trend</h3>
+            <h3 className="text-lg font-bold mb-4 text-cyan-400">NIFTY Trend</h3>
             {lineData.length > 0 ? (
-              <LineChart data={lineData} color="#0066ff" height={250} />
+              <LineChart data={lineData} color="#00e5ff" height={250} />
             ) : (
               <div className="h-[250px] flex items-center justify-center text-zinc-500">No data</div>
             )}
           </GlassCard>
-        </div>
+        </motion.div>
 
         {/* NIFTY 50 */}
-        <GlassCard className="mb-8">
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-50px" }}
+          transition={{ duration: 0.6 }}
+        >
+          <GlassCard className="mb-8">
           <h3 className="text-lg font-bold mb-4">NIFTY 50 Stocks (Live)</h3>
           {niftyLoading && nifty50.length === 0 ? (
             <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
@@ -199,15 +261,29 @@ export default function DashboardPage() {
           ) : (
             <p className="text-zinc-500 text-sm">No NIFTY 50 data</p>
           )}
-        </GlassCard>
+          </GlassCard>
+        </motion.div>
 
-        <GlassCard className="mb-8">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.98, y: 20 }}
+          whileInView={{ opacity: 1, scale: 1, y: 0 }}
+          viewport={{ once: true, margin: "-50px" }}
+          transition={{ duration: 0.7 }}
+        >
+          <GlassCard className="mb-8">
           <h3 className="text-lg font-bold mb-6">Sector Performance</h3>
-          <MarketHeatmap />
-        </GlassCard>
+            <MarketHeatmap />
+          </GlassCard>
+        </motion.div>
 
         {/* Gainers & Losers */}
-        <div className="grid md:grid-cols-2 gap-8">
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-50px" }}
+          transition={{ duration: 0.6 }}
+          className="grid md:grid-cols-2 gap-8"
+        >
           <GlassCard>
             <h3 className="text-lg font-bold mb-4 text-emerald-400">Top Gainers</h3>
             {moversLoading && gainers.length === 0 ? (
@@ -216,6 +292,8 @@ export default function DashboardPage() {
                   <div key={i} className="h-10 bg-white/5 rounded animate-pulse" />
                 ))}
               </div>
+            ) : gainers.length === 0 ? (
+              <p className="text-zinc-500 text-sm">No gainers data right now</p>
             ) : (
               <div className="space-y-3">
                 {gainers.map((stock, i) => (
@@ -244,6 +322,8 @@ export default function DashboardPage() {
                   <div key={i} className="h-10 bg-white/5 rounded animate-pulse" />
                 ))}
               </div>
+            ) : losers.length === 0 ? (
+              <p className="text-zinc-500 text-sm">No losers data right now</p>
             ) : (
               <div className="space-y-3">
                 {losers.map((stock, i) => (
@@ -264,7 +344,7 @@ export default function DashboardPage() {
               </div>
             )}
           </GlassCard>
-        </div>
+        </motion.div>
       </div>
     </div>
   );

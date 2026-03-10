@@ -6,7 +6,6 @@
 import { getCached, setCached, cacheKey, CACHE_TTL_SLOW } from "@/lib/stockCache";
 
 const YAHOO_CHART = "https://query1.finance.yahoo.com/v8/finance/chart";
-const YAHOO_QUOTE = "https://query1.finance.yahoo.com/v7/finance/quote";
 
 const RANGE_MAP: Record<string, string> = {
   "1D": "1d",
@@ -21,6 +20,7 @@ function toYahooSymbol(symbol: string): string {
   const s = symbol.toUpperCase().replace(/\s+/g, "");
   if (s === "NIFTY" || s === "NIFTY 50") return "^NSEI";
   if (s === "SENSEX") return "^BSESN";
+  if (s.startsWith("^")) return s;
   if (s.endsWith(".NS") || s.endsWith(".BO")) return s;
   return `${s}.NS`;
 }
@@ -53,6 +53,49 @@ export interface IndexQuote {
   value: number;
   change: number;
   changePercent: number;
+}
+
+function lastValidNumber(values: unknown[] | undefined): number | null {
+  if (!Array.isArray(values)) return null;
+  for (let i = values.length - 1; i >= 0; i--) {
+    const v = values[i];
+    if (typeof v === "number" && Number.isFinite(v) && v > 0) return v;
+  }
+  return null;
+}
+
+async function fetchYahooChartQuote(symbol: string): Promise<FullQuote | null> {
+  const ySymbol = toYahooSymbol(symbol);
+  const res = await fetch(`${YAHOO_CHART}/${encodeURIComponent(ySymbol)}?range=5d&interval=1d`);
+  const json = await res.json();
+  const result = json?.chart?.result?.[0];
+  if (!result) return null;
+
+  const meta = result.meta ?? {};
+  const closes = result.indicators?.quote?.[0]?.close as unknown[] | undefined;
+  const volumes = result.indicators?.quote?.[0]?.volume as unknown[] | undefined;
+  const lastClose = lastValidNumber(closes);
+
+  const price = (meta.regularMarketPrice ?? lastClose ?? meta.previousClose ?? 0) as number;
+  if (!(price > 0)) return null;
+
+  const previousClose = (meta.chartPreviousClose ?? meta.previousClose ?? lastClose ?? price) as number;
+  const change = price - previousClose;
+  const changePercent = previousClose ? (change / previousClose) * 100 : 0;
+
+  return {
+    symbol: String(meta.symbol ?? symbol).replace(/\.(NS|BO)$/, ""),
+    price,
+    change,
+    changePercent,
+    dayHigh: (meta.regularMarketDayHigh ?? meta.fiftyTwoWeekHigh ?? price) as number,
+    dayLow: (meta.regularMarketDayLow ?? meta.fiftyTwoWeekLow ?? price) as number,
+    open: (meta.regularMarketOpen ?? previousClose ?? price) as number,
+    previousClose,
+    volume: (meta.regularMarketVolume ?? lastValidNumber(volumes) ?? 0) as number,
+    marketCap: (meta.marketCap ?? 0) as number,
+    shortName: (meta.shortName ?? meta.longName) as string | undefined,
+  };
 }
 
 async function fetchWithRetry<T>(
@@ -117,28 +160,8 @@ export async function fetchFullQuote(symbol: string): Promise<FullQuote | null> 
   const cached = getCached<FullQuote>(key);
   if (cached) return cached;
 
-  const ySymbol = toYahooSymbol(symbol);
   const { data } = await fetchWithRetry(async () => {
-    const res = await fetch(`${YAHOO_QUOTE}?symbols=${encodeURIComponent(ySymbol)}`);
-    const json = await res.json();
-    const q = json?.quoteResponse?.result?.[0];
-    if (!q) return null;
-    const price = q.regularMarketPrice ?? q.previousClose ?? 0;
-    const prev = q.previousClose ?? price;
-    const changePct = prev ? ((price - prev) / prev) * 100 : 0;
-    return {
-      symbol: String(q.symbol ?? symbol).replace(/\.(NS|BO)$/, ""),
-      price,
-      change: price - prev,
-      changePercent: changePct,
-      dayHigh: q.regularMarketDayHigh ?? q.dayHigh ?? price,
-      dayLow: q.regularMarketDayLow ?? q.dayLow ?? price,
-      open: q.regularMarketOpen ?? q.previousClose ?? price,
-      previousClose: prev,
-      volume: q.regularMarketVolume ?? 0,
-      marketCap: q.marketCap ?? 0,
-      shortName: q.shortName,
-    } as FullQuote;
+    return await fetchYahooChartQuote(symbol);
   });
 
   if (data) {
@@ -150,43 +173,38 @@ export async function fetchFullQuote(symbol: string): Promise<FullQuote | null> 
 
 export async function fetchMultipleQuotes(symbols: string[]): Promise<FullQuote[]> {
   if (symbols.length === 0) return [];
+  const cachedForSymbols = symbols
+    .map((s) => getCached<FullQuote>(cacheKey("quote", s)))
+    .filter((q): q is FullQuote => q != null);
+
   const toFetch = symbols.filter((s) => !getCached<FullQuote>(cacheKey("quote", s)));
   if (toFetch.length === 0) {
+    return cachedForSymbols;
+  }
+
+  const { data } = await fetchWithRetry(async () => {
+    const items = await Promise.all(
+      toFetch.map(async (requested) => ({
+        requested,
+        quote: await fetchYahooChartQuote(requested),
+      })),
+    );
+    return items.filter((x): x is { requested: string; quote: FullQuote } => x.quote != null);
+  });
+
+  if (data && data.length > 0) {
+    for (const item of data) {
+      setCached(cacheKey("quote", item.requested), item.quote);
+      setCached(cacheKey("quote", item.quote.symbol), item.quote);
+    }
+    // Return using the original symbol order from cache after writing new entries.
     return symbols
       .map((s) => getCached<FullQuote>(cacheKey("quote", s)))
       .filter((q): q is FullQuote => q != null);
   }
 
-  const ySymbols = toFetch.map(toYahooSymbol).join(",");
-  const { data } = await fetchWithRetry(async () => {
-    const res = await fetch(`${YAHOO_QUOTE}?symbols=${encodeURIComponent(ySymbols)}`);
-    const json = await res.json();
-    const results = json?.quoteResponse?.result ?? [];
-    return results.map((q: Record<string, unknown>) => {
-      const price = (q.regularMarketPrice ?? q.previousClose ?? 0) as number;
-      const prev = (q.previousClose ?? price) as number;
-      const changePct = prev ? ((price - prev) / prev) * 100 : 0;
-      return {
-        symbol: String(q.symbol ?? "").replace(/\.(NS|BO)$/, ""),
-        price,
-        change: price - prev,
-        changePercent: changePct,
-        dayHigh: (q.regularMarketDayHigh ?? q.dayHigh ?? price) as number,
-        dayLow: (q.regularMarketDayLow ?? q.dayLow ?? price) as number,
-        open: (q.regularMarketOpen ?? prev) as number,
-        previousClose: prev,
-        volume: (q.regularMarketVolume ?? 0) as number,
-        marketCap: (q.marketCap ?? 0) as number,
-        shortName: q.shortName,
-      } as FullQuote;
-    });
-  });
-
-  if (data) {
-    data.forEach((q) => setCached(cacheKey("quote", q.symbol), q));
-    return data;
-  }
-  return toFetch
+  // If upstream returned no quotes, preserve existing cached values instead of replacing with empty.
+  return symbols
     .map((s) => getCached<FullQuote>(cacheKey("quote", s)))
     .filter((q): q is FullQuote => q != null);
 }
@@ -204,29 +222,19 @@ export async function fetchIndices(): Promise<IndexQuote[]> {
   const cached = getCached<IndexQuote[]>(key);
   if (cached && cached.length > 0) return cached;
 
-  const symbols = ["^NSEI", "^BSESN"];
   const { data } = await fetchWithRetry(async () => {
-    const res = await fetch(`${YAHOO_QUOTE}?symbols=${symbols.join(",")}`);
-    const json = await res.json();
-    const results = json?.quoteResponse?.result ?? [];
-    const bySym: Record<string, IndexQuote> = {};
-    for (const q of results) {
-      const price = q.regularMarketPrice ?? q.previousClose ?? 0;
-      const prev = q.previousClose ?? price;
-      bySym[q.symbol] = {
-        symbol: q.symbol === "^NSEI" ? "NIFTY 50" : "SENSEX",
-        value: price,
-        change: price - prev,
-        changePercent: prev ? ((price - prev) / prev) * 100 : 0,
-      };
-    }
+    const [nifty, sensex] = await Promise.all([
+      fetchYahooChartQuote("^NSEI"),
+      fetchYahooChartQuote("^BSESN"),
+    ]);
+    if (!nifty || !sensex) return null;
     return [
-      { ...(bySym["^NSEI"] ?? { symbol: "NIFTY 50", value: 0, change: 0, changePercent: 0 }) },
-      { ...(bySym["^BSESN"] ?? { symbol: "SENSEX", value: 0, change: 0, changePercent: 0 }) },
+      { symbol: "NIFTY 50", value: nifty.price, change: nifty.change, changePercent: nifty.changePercent },
+      { symbol: "SENSEX", value: sensex.price, change: sensex.change, changePercent: sensex.changePercent },
     ];
   });
 
-  if (data) {
+  if (data && data.length === 2) {
     const expanded = [
       { ...data[0], symbol: "NIFTY 50" },
       { ...data[1], symbol: "SENSEX" },

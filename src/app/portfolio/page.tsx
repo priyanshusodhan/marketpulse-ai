@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import ParticleBackground from "@/components/ParticleBackground";
 import GlassCard from "@/components/GlassCard";
 import LineChart from "@/charts/LineChart";
+import AnimatedNumber from "@/components/AnimatedNumber";
 import Link from "next/link";
 
 const LEADERBOARD = [
@@ -63,18 +64,37 @@ export default function PortfolioPage() {
       <div className="fixed inset-0 grid-bg z-0" />
       <ParticleBackground />
 
+      {/* Dynamic Subpage Orbs */}
+      <motion.div
+        className="fixed top-1/4 -right-32 w-96 h-96 bg-cyan-600/20 rounded-full blur-[120px] pointer-events-none z-0"
+        animate={{ y: [0, -40, 0], x: [0, -30, 0], opacity: [0.3, 0.6, 0.3] }}
+        transition={{ duration: 15, repeat: Infinity, ease: "easeInOut" }}
+      />
+      <motion.div
+        className="fixed bottom-1/4 -left-32 w-96 h-96 bg-purple-600/20 rounded-full blur-[120px] pointer-events-none z-0"
+        animate={{ y: [0, 50, 0], x: [0, 30, 0], opacity: [0.3, 0.6, 0.3] }}
+        transition={{ duration: 18, repeat: Infinity, ease: "easeInOut", delay: 2 }}
+      />
+
       <div className="relative z-10 py-8 px-6 max-w-7xl mx-auto">
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           className="flex flex-wrap justify-between items-center mb-8 gap-4"
         >
-          <h1 className="text-4xl font-bold gradient-text">Portfolio Tracker</h1>
+          <motion.h1
+            initial={{ opacity: 0, x: -30 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.7, ease: "easeOut" }}
+            className="text-4xl font-bold gradient-text"
+          >
+            Portfolio Tracker
+          </motion.h1>
           <div className="flex gap-3">
             <motion.button
               onClick={load}
               disabled={loading}
-              className="px-4 py-2 rounded-xl glass border border-cyan-500/30 text-cyan-400 text-sm disabled:opacity-50"
+              className="px-4 py-2 rounded-xl glass border border-white/20 text-white text-sm disabled:opacity-50 hover:bg-white/5"
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
             >
@@ -82,7 +102,7 @@ export default function PortfolioPage() {
             </motion.button>
             <Link href="/login">
             <motion.button
-              className="px-6 py-3 rounded-xl bg-cyan-500/20 text-cyan-400 border border-cyan-500/50"
+              className="px-6 py-3 rounded-xl bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 hover:bg-cyan-500/20"
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
             >
@@ -92,32 +112,45 @@ export default function PortfolioPage() {
           </div>
         </motion.div>
 
-        <div className="grid lg:grid-cols-3 gap-8 mb-8">
+        <motion.div 
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-50px" }}
+          transition={{ duration: 0.6 }}
+          className="grid lg:grid-cols-3 gap-8 mb-8"
+        >
           <GlassCard>
             <p className="text-sm text-zinc-400">Total Value</p>
             <p className="text-3xl font-bold text-white mt-1">
-              ₹{totalValue.toLocaleString("en-IN", { maximumFractionDigits: 2 })}
+              ₹<AnimatedNumber value={totalValue} />
             </p>
           </GlassCard>
           <GlassCard>
             <p className="text-sm text-zinc-400">Profit / Loss</p>
             <p className={`text-3xl font-bold mt-1 ${profitLoss >= 0 ? "text-emerald-400" : "text-red-400"}`}>
-              {profitLoss >= 0 ? "+" : ""}₹{profitLoss.toLocaleString("en-IN", { maximumFractionDigits: 2 })}
+              {profitLoss >= 0 ? "+" : ""}₹<AnimatedNumber value={profitLoss} />
             </p>
           </GlassCard>
           <GlassCard>
             <p className="text-sm text-zinc-400">Return %</p>
             <p className={`text-3xl font-bold mt-1 ${Number(profitPercent) >= 0 ? "text-emerald-400" : "text-red-400"}`}>
-              {Number(profitPercent) >= 0 ? "+" : ""}{profitPercent}%
+              {Number(profitPercent) >= 0 ? "+" : ""}
+              <AnimatedNumber value={Number(profitPercent)} formatFunc={(v) => v.toFixed(2)} />%
             </p>
           </GlassCard>
-        </div>
+        </motion.div>
 
-        <div className="grid lg:grid-cols-2 gap-8 mb-8">
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-50px" }}
+          transition={{ duration: 0.6 }}
+          className="grid lg:grid-cols-2 gap-8 mb-8"
+        >
           <GlassCard>
             <h3 className="text-xl font-bold mb-4">Portfolio / NIFTY Performance</h3>
             {performanceData.length > 0 ? (
-              <LineChart data={performanceData} color="#00f5ff" height={280} />
+              <LineChart data={performanceData} color="#ffffff" height={280} />
             ) : (
               <div className="h-[280px] flex items-center justify-center text-zinc-500">Loading…</div>
             )}
@@ -144,9 +177,15 @@ export default function PortfolioPage() {
               ))}
             </div>
           </GlassCard>
-        </div>
+        </motion.div>
 
-        <GlassCard>
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-50px" }}
+          transition={{ duration: 0.6 }}
+        >
+          <GlassCard>
           <h3 className="text-xl font-bold mb-4">Your Holdings</h3>
           <div className="overflow-x-auto">
             <table className="w-full">
@@ -186,6 +225,7 @@ export default function PortfolioPage() {
             </table>
           </div>
         </GlassCard>
+        </motion.div>
       </div>
     </div>
   );

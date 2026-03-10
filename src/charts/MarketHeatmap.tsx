@@ -18,9 +18,14 @@ export default function MarketHeatmap() {
       try {
         const res = await fetch("/api/sectors");
         const json = await res.json();
-        setSectors(Array.isArray(json) ? json : []);
+        const next = Array.isArray(json) ? json : [];
+        if (next.length > 0) {
+          setSectors(next);
+        } else if (sectors.length === 0) {
+          setSectors([]);
+        }
       } catch {
-        setSectors([]);
+        if (sectors.length === 0) setSectors([]);
       } finally {
         setLoading(false);
       }
@@ -28,7 +33,7 @@ export default function MarketHeatmap() {
     fetchData();
     const id = setInterval(fetchData, 30 * 1000);
     return () => clearInterval(id);
-  }, []);
+  }, [sectors.length]);
 
   if (loading && sectors.length === 0) {
     return (

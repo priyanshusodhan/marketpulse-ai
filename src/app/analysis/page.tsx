@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { motion } from "framer-motion";
 import ParticleBackground from "@/components/ParticleBackground";
 import GlassCard from "@/components/GlassCard";
@@ -18,14 +18,35 @@ interface CandlePoint {
   volume?: number;
 }
 
+const SYMBOL_ALIASES: Record<string, string> = {
+  TATA: "TATAMOTORS",
+  TATASTEEL: "TATASTEEL",
+  TCS: "TCS",
+  RELIANCE: "RELIANCE",
+  INFOSYS: "INFY",
+  HDFC: "HDFCBANK",
+  ICICI: "ICICIBANK",
+  SBI: "SBIN",
+  NIFTY: "NIFTY",
+  SENSEX: "SENSEX",
+};
+
+function resolveSymbol(input: string): string {
+  const raw = input.trim().toUpperCase();
+  if (!raw) return "";
+  if (raw.endsWith(".NS") || raw.endsWith(".BO")) return raw;
+  return SYMBOL_ALIASES[raw] ?? raw;
+}
+
 export default function AnalysisPage() {
   const [search, setSearch] = useState("RELIANCE");
   const [activeSymbol, setActiveSymbol] = useState<string | null>("RELIANCE");
   const [candleData, setCandleData] = useState<CandlePoint[]>([]);
   const [lineData, setLineData] = useState<{ x: number; y: number }[]>([]);
   const [chartLoading, setChartLoading] = useState(false);
+  const [lastError, setLastError] = useState<string | null>(null);
 
-  const { quote, loading: quoteLoading, refresh } = useFullQuote(activeSymbol);
+  const { quote, loading: quoteLoading } = useFullQuote(activeSymbol);
 
   const computeIndicators = (data: CandlePoint[]) => {
     if (data.length < 20) return { ma20: 0, ma50: 0, rsi: 50, volatility: 0 };
@@ -47,10 +68,11 @@ export default function AnalysisPage() {
     return { ma20, ma50, rsi, volatility };
   };
 
-  const analyze = useCallback(async () => {
-    const sym = search.trim().toUpperCase();
+  const analyzeSymbol = useCallback(async (input: string) => {
+    const sym = resolveSymbol(input);
     if (!sym) return;
     setActiveSymbol(sym);
+    setLastError(null);
     setChartLoading(true);
     try {
       const res = await fetch(`/api/stock?symbol=${encodeURIComponent(sym)}&range=1M`);
@@ -58,13 +80,31 @@ export default function AnalysisPage() {
       const candles: CandlePoint[] = Array.isArray(chart) ? chart : [];
       setCandleData(candles);
       setLineData(candles.map((d, i) => ({ x: i, y: d.close })));
+      if (candles.length === 0) {
+        setLastError(`No live chart data found for "${sym}". Try RELIANCE, TCS, INFY, HDFCBANK, ICICIBANK, SBIN, TATAMOTORS.`);
+      }
     } catch {
       setCandleData([]);
       setLineData([]);
+      setLastError("Failed to fetch live data. Please try again.");
     } finally {
       setChartLoading(false);
     }
-  }, [search]);
+  }, []);
+
+  const analyze = useCallback(async () => {
+    await analyzeSymbol(search);
+  }, [analyzeSymbol, search]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const symbolFromUrl = new URLSearchParams(window.location.search).get("symbol");
+    if (!symbolFromUrl) return;
+    const resolved = resolveSymbol(symbolFromUrl);
+    if (!resolved || resolved === activeSymbol) return;
+    setSearch(resolved);
+    void analyzeSymbol(resolved);
+  }, [activeSymbol, analyzeSymbol]);
 
   const indicators = computeIndicators(candleData);
   const signal =
@@ -78,16 +118,35 @@ export default function AnalysisPage() {
       <div className="fixed inset-0 grid-bg z-0" />
       <ParticleBackground />
 
+      {/* Dynamic Subpage Orbs */}
+      <motion.div
+        className="fixed top-1/4 -right-20 w-80 h-80 bg-cyan-600/20 rounded-full blur-[100px] pointer-events-none z-0"
+        animate={{ y: [0, -30, 0], x: [0, -20, 0], opacity: [0.3, 0.6, 0.3] }}
+        transition={{ duration: 13, repeat: Infinity, ease: "easeInOut" }}
+      />
+      <motion.div
+        className="fixed bottom-1/4 -left-20 w-80 h-80 bg-emerald-600/20 rounded-full blur-[100px] pointer-events-none z-0"
+        animate={{ y: [0, 30, 0], x: [0, 20, 0], opacity: [0.3, 0.6, 0.3] }}
+        transition={{ duration: 16, repeat: Infinity, ease: "easeInOut", delay: 1 }}
+      />
+
       <div className="relative z-10 py-8 px-6 max-w-7xl mx-auto">
         <motion.h1
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
+          initial={{ opacity: 0, x: -30 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.7, ease: "easeOut" }}
           className="text-4xl font-bold gradient-text mb-8"
         >
           Stock Analysis
         </motion.h1>
 
-        <GlassCard className="mb-8">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.98, y: 20 }}
+          whileInView={{ opacity: 1, scale: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.6, delay: 0.1, ease: "easeOut" }}
+        >
+          <GlassCard className="mb-8">
           <div className="flex flex-wrap gap-4 items-center">
             <input
               type="text"
@@ -95,26 +154,36 @@ export default function AnalysisPage() {
               onChange={(e) => setSearch(e.target.value.toUpperCase())}
               onKeyDown={(e) => e.key === "Enter" && analyze()}
               placeholder="RELIANCE, TCS, INFY, HDFCBANK, ICICIBANK, SBIN..."
-              className="flex-1 min-w-[200px] px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-zinc-500 focus:outline-none focus:border-cyan-500/50"
+              className="flex-1 min-w-[200px] px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-zinc-500 focus:outline-none focus:border-white/50"
             />
             <motion.button
               onClick={analyze}
               disabled={chartLoading}
-              className="px-6 py-3 rounded-xl bg-cyan-500/20 text-cyan-400 border border-cyan-500/50 font-medium disabled:opacity-50"
+              className="px-6 py-3 rounded-xl bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 font-medium disabled:opacity-50 hover:bg-cyan-500/20"
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
             >
               {chartLoading ? "Loading…" : "Analyze"}
             </motion.button>
           </div>
-        </GlassCard>
+          </GlassCard>
+        </motion.div>
 
-        <div className="grid lg:grid-cols-3 gap-8 mb-8">
+        <motion.div 
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-50px" }}
+          transition={{ duration: 0.6 }}
+          className="grid lg:grid-cols-3 gap-8 mb-8"
+        >
           <div className="lg:col-span-2">
             <GlassCard>
               <div className="flex justify-between items-center mb-4">
                 <div>
                   <h2 className="text-2xl font-bold">{search}</h2>
+                  {activeSymbol && activeSymbol !== search.trim().toUpperCase() && (
+                    <p className="text-xs text-zinc-500 mt-1">Resolved to: {activeSymbol}</p>
+                  )}
                   {quote ? (
                     <p className="text-zinc-400">
                       ₹{quote.price.toFixed(2)}{" "}
@@ -142,8 +211,8 @@ export default function AnalysisPage() {
                   </div>
                 </>
               ) : (
-                <div className="h-[350px] flex items-center justify-center text-zinc-500">
-                  Try RELIANCE, TCS, INFY, HDFCBANK, ICICIBANK, SBIN
+                <div className="h-[350px] flex items-center justify-center text-zinc-500 text-center px-6">
+                  {lastError ?? "Try RELIANCE, TCS, INFY, HDFCBANK, ICICIBANK, SBIN, TATAMOTORS"}
                 </div>
               )}
             </GlassCard>
@@ -228,9 +297,15 @@ export default function AnalysisPage() {
               <p className="text-xs text-zinc-500 mt-2 text-center">Based on RSI & trend</p>
             </GlassCard>
           </div>
-        </div>
+        </motion.div>
 
-        <div className="grid md:grid-cols-3 gap-6 mb-8">
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-50px" }}
+          transition={{ duration: 0.6 }}
+          className="grid md:grid-cols-3 gap-6 mb-8"
+        >
           <GlassCard>
             <h3 className="font-bold mb-4">Bullish Probability</h3>
             <div className="flex items-center gap-4">
@@ -254,19 +329,26 @@ export default function AnalysisPage() {
           <GlassCard>
             <h3 className="font-bold mb-4">AI Confidence</h3>
             <div className="flex items-center gap-4">
-              <div className="w-24 h-24 rounded-full border-4 border-cyan-500/50 flex items-center justify-center">
-                <span className="text-2xl font-bold text-cyan-400">{aiConfidence}%</span>
+              <div className="w-24 h-24 rounded-full border-4 border-white/30 flex items-center justify-center">
+                <span className="text-2xl font-bold text-white">{aiConfidence}%</span>
               </div>
               <p className="text-sm text-zinc-400">Confidence in signal</p>
             </div>
           </GlassCard>
-        </div>
+        </motion.div>
 
         {lineData.length > 0 && (
-          <GlassCard>
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-50px" }}
+            transition={{ duration: 0.6 }}
+          >
+            <GlassCard>
             <h3 className="font-bold mb-4">Price Trend</h3>
-            <LineChart data={lineData} color="#00f5ff" height={250} />
-          </GlassCard>
+            <LineChart data={lineData} color="#ffffff" height={250} />
+            </GlassCard>
+          </motion.div>
         )}
       </div>
     </div>

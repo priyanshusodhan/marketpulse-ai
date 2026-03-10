@@ -9,7 +9,7 @@ export async function GET(request: Request) {
   try {
     const data = await fetchChart(symbol, range);
     return NextResponse.json(data);
-  } catch (e) {
+  } catch {
     return NextResponse.json([], { status: 200 });
   }
 }

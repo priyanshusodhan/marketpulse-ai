@@ -1,15 +1,20 @@
 @import "tailwindcss";
 
 :root {
-  --background: #0a0a0f;
-  --foreground: #e4e4e7;
-  --neon-cyan: #00f5ff;
-  --neon-purple: #bf00ff;
-  --neon-blue: #0066ff;
-  --glass-bg: rgba(255, 255, 255, 0.03);
-  --glass-border: rgba(255, 255, 255, 0.08);
-  --glow-cyan: 0 0 20px rgba(0, 245, 255, 0.3);
-  --glow-purple: 0 0 20px rgba(191, 0, 255, 0.3);
+  --background: #030308;
+  --background-dark: #050510;
+  --background-light: #0d0d1f;
+  --foreground: #f8fafc;
+  --neon-cyan: #00e5ff; /* Electric Cyan */
+  --neon-purple: #8b5cf6; /* Deep Violet */
+  --neon-emerald: #10b981; /* Glowing Emerald */
+  --neon-blue: #3b82f6; /* Azure Highlight */
+  --glass-bg: rgba(10, 10, 26, 0.6);
+  --glass-border: rgba(0, 229, 255, 0.15); /* Subtly tinted blue-cyan */
+  --glow-cyan: 0 0 25px rgba(0, 229, 255, 0.4);
+  --glow-purple: 0 0 25px rgba(139, 92, 246, 0.4);
+  --glow-emerald: 0 0 25px rgba(16, 185, 129, 0.4);
+  --glow-red: 0 0 25px rgba(244, 63, 94, 0.4);
 }
 
 @theme inline {
@@ -28,30 +33,20 @@ html {
 }
 
 body {
-  background: var(--background);
+  background: var(--background-dark);
   color: var(--foreground);
   font-family: var(--font-sans), system-ui, sans-serif;
   overflow-x: hidden;
 }
 
-/* Custom scrollbar */
+/* Cursor visibility restored */
+/* Hide scrollbar for clean aesthetic */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  display: none;
 }
-
-::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.02);
-  border-radius: 3px;
-}
-
-::-webkit-scrollbar-thumb {
-  background: linear-gradient(180deg, var(--neon-cyan), var(--neon-purple));
-  border-radius: 3px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(180deg, var(--neon-purple), var(--neon-cyan));
+* {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 
 /* Glassmorphism utility */
@@ -63,18 +58,18 @@ body {
 }
 
 .glass-hover:hover {
-  background: rgba(255, 255, 255, 0.06);
-  border-color: rgba(255, 255, 255, 0.12);
+  background: rgba(40, 32, 10, 0.8);
+  border-color: rgba(245, 197, 24, 0.3);
   box-shadow: var(--glow-cyan);
 }
 
 /* Neon text glow */
 .text-glow-cyan {
-  text-shadow: 0 0 10px rgba(0, 245, 255, 0.5), 0 0 20px rgba(0, 245, 255, 0.3);
+  text-shadow: 0 0 10px rgba(245, 197, 24, 0.5), 0 0 20px rgba(245, 197, 24, 0.3);
 }
 
 .text-glow-purple {
-  text-shadow: 0 0 10px rgba(191, 0, 255, 0.5), 0 0 20px rgba(191, 0, 255, 0.3);
+  text-shadow: 0 0 10px rgba(232, 137, 12, 0.5), 0 0 20px rgba(232, 137, 12, 0.3);
 }
 
 /* Gradient text */
@@ -92,27 +87,37 @@ body {
   50% { background-position: 100% 50%; }
 }
 
-/* Futuristic gradient background (no dots/grid) */
+/* Futuristic gradient background (Cyber Luxury) */
 .grid-bg {
   background:
-    radial-gradient(circle at top left, rgba(0, 245, 255, 0.16) 0, transparent 55%),
-    radial-gradient(circle at bottom right, rgba(191, 0, 255, 0.18) 0, transparent 55%),
-    radial-gradient(circle at center, rgba(0, 102, 255, 0.14) 0, transparent 60%);
-  opacity: 0.65;
-  animation: bg-shift 16s ease-in-out infinite alternate;
+    radial-gradient(circle at top left, rgba(0, 229, 255, 0.15) 0, transparent 60%),
+    radial-gradient(circle at bottom right, rgba(139, 92, 246, 0.15) 0, transparent 60%),
+    radial-gradient(circle at center, rgba(16, 185, 129, 0.05) 0, transparent 70%);
+  opacity: 1;
+  animation: bg-shift 12s ease-in-out infinite alternate;
 }
 
 @keyframes bg-shift {
   0% {
     transform: translate3d(0, 0, 0) scale(1);
-    opacity: 0.5;
   }
   50% {
-    transform: translate3d(-12px, 16px, 0) scale(1.05);
-    opacity: 0.9;
+    transform: translate3d(-20px, 20px, 0) scale(1.05);
   }
   100% {
-    transform: translate3d(8px, -12px, 0) scale(1.02);
-    opacity: 0.7;
+    transform: translate3d(15px, -15px, 0) scale(1.02);
   }
+}
+
+/* Beautiful slow-breathing aurora keyframes */
+.aurora-bg {
+  background: linear-gradient(120deg, rgba(0, 229, 255, 0.1), rgba(139, 92, 246, 0.15), rgba(10, 10, 26, 0.8));
+  background-size: 300% 300%;
+  animation: aurora-shift 15s ease infinite alternate;
+}
+
+@keyframes aurora-shift {
+  0% { background-position: 0% 50%; opacity: 0.6; }
+  50% { background-position: 100% 50%; opacity: 1; }
+  100% { background-position: 0% 50%; opacity: 0.6; }
 }

@@ -10,7 +10,7 @@ export async function GET() {
       dbConfigured: ok,
       timestamp: new Date().toISOString(),
     });
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       {
         ok: false,
@@ -21,4 +21,3 @@ export async function GET() {
     );
   }
 }
-

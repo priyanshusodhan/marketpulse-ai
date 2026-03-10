@@ -7,6 +7,8 @@ import {
   BarElement,
   Title,
   Tooltip,
+  ChartOptions,
+  TooltipItem,
 } from "chart.js";
 import { Bar } from "react-chartjs-2";
 
@@ -37,15 +39,17 @@ export default function VolumeChart({ data, height = 120 }: VolumeChartProps) {
     ],
   };
 
-  const options = {
+  const options: ChartOptions<"bar"> = {
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
       legend: { display: false },
       tooltip: {
         callbacks: {
-          label: (c: { raw: number }) =>
-            `Vol: ${(c.raw / 1e6).toFixed(2)}M`,
+          label: (c: TooltipItem<"bar">) => {
+            const raw = Number(c.raw ?? 0);
+            return `Vol: ${(raw / 1e6).toFixed(2)}M`;
+          },
         },
       },
     },

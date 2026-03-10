@@ -16,18 +16,31 @@ export default function InsightsPage() {
       <div className="fixed inset-0 grid-bg z-0" />
       <ParticleBackground />
 
+      {/* Dynamic Subpage Orbs */}
+      <motion.div
+        className="fixed top-1/4 -right-20 w-80 h-80 bg-cyan-600/20 rounded-full blur-[100px] pointer-events-none z-0"
+        animate={{ y: [0, -30, 0], x: [0, -20, 0], opacity: [0.3, 0.6, 0.3] }}
+        transition={{ duration: 13, repeat: Infinity, ease: "easeInOut" }}
+      />
+      <motion.div
+        className="fixed bottom-1/4 -left-20 w-80 h-80 bg-red-600/20 rounded-full blur-[100px] pointer-events-none z-0"
+        animate={{ y: [0, 30, 0], x: [0, 20, 0], opacity: [0.3, 0.6, 0.3] }}
+        transition={{ duration: 16, repeat: Infinity, ease: "easeInOut", delay: 1 }}
+      />
+
       <div className="relative z-10 py-8 px-6 max-w-7xl mx-auto">
         <div className="flex flex-wrap justify-between items-center gap-4 mb-8">
           <motion.h1
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
+            initial={{ opacity: 0, x: -30 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.7, ease: "easeOut" }}
             className="text-4xl font-bold gradient-text"
           >
             Market Insights
           </motion.h1>
           <motion.button
             onClick={refresh}
-            className="px-4 py-2 rounded-lg glass border border-cyan-500/30 text-cyan-400 text-sm"
+            className="px-4 py-2 rounded-lg glass border border-white/20 text-white text-sm hover:bg-white/5"
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
           >
@@ -35,7 +48,13 @@ export default function InsightsPage() {
           </motion.button>
         </div>
 
-        <GlassCard className="mb-8">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.98, y: 20 }}
+          whileInView={{ opacity: 1, scale: 1, y: 0 }}
+          viewport={{ once: true, margin: "-50px" }}
+          transition={{ duration: 0.6, delay: 0.1 }}
+        >
+          <GlassCard className="mb-8">
           <h2 className="text-xl font-bold mb-6">Bull vs Bear Sentiment Meter</h2>
           <div className="flex flex-col md:flex-row gap-8 items-center">
             <div className="flex-1 w-full">
@@ -75,13 +94,27 @@ export default function InsightsPage() {
             </div>
           </div>
         </GlassCard>
+        </motion.div>
 
-        <GlassCard className="mb-8">
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-50px" }}
+          transition={{ duration: 0.6 }}
+        >
+          <GlassCard className="mb-8">
           <h2 className="text-xl font-bold mb-6">Sector Performance</h2>
           <MarketHeatmap />
-        </GlassCard>
+          </GlassCard>
+        </motion.div>
 
-        <div className="grid md:grid-cols-2 gap-8 mb-8">
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-50px" }}
+          transition={{ duration: 0.6 }}
+          className="grid md:grid-cols-2 gap-8 mb-8"
+        >
           <GlassCard>
             <h3 className="text-lg font-bold mb-4 text-emerald-400">Top Gainers</h3>
             {loading && gainers.length === 0 ? (
@@ -132,9 +165,15 @@ export default function InsightsPage() {
               </div>
             )}
           </GlassCard>
-        </div>
+        </motion.div>
 
-        <GlassCard>
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-50px" }}
+          transition={{ duration: 0.6 }}
+        >
+          <GlassCard>
           <h2 className="text-xl font-bold mb-4">Market Sentiment Summary</h2>
           <div className="grid md:grid-cols-3 gap-6">
             <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
@@ -151,6 +190,7 @@ export default function InsightsPage() {
             </div>
           </div>
         </GlassCard>
+        </motion.div>
       </div>
     </div>
   );

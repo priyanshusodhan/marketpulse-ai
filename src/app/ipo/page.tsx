@@ -20,6 +20,8 @@ export default function IPOPage() {
   const [upcoming, setUpcoming] = useState<IpoItem[]>([]);
   const [open, setOpen] = useState<IpoItem[]>([]);
   const [closed, setClosed] = useState<IpoItem[]>([]);
+  const [ipoApiConfigured, setIpoApiConfigured] = useState(false);
+  const [ipoError, setIpoError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [chartData, setChartData] = useState<{ x: number; y: number }[]>([]);
   const [applyFlow, setApplyFlow] = useState<"idle" | "upi" | "confirm">("idle");
@@ -27,6 +29,7 @@ export default function IPOPage() {
   const [upiId, setUpiId] = useState("");
   const [amount, setAmount] = useState("");
   const [saving, setSaving] = useState(false);
+  const upcomingDisplay = upcoming.length > 0 ? upcoming : open;
 
   useEffect(() => {
     const fetchIpos = async () => {
@@ -36,10 +39,14 @@ export default function IPOPage() {
         setUpcoming(Array.isArray(json?.upcoming) ? json.upcoming : []);
         setOpen(Array.isArray(json?.open) ? json.open : []);
         setClosed(Array.isArray(json?.closed) ? json.closed : []);
+        setIpoApiConfigured(Boolean(json?.apiConfigured));
+        setIpoError(typeof json?.error === "string" && json.error.length > 0 ? json.error : null);
       } catch {
         setUpcoming([]);
         setOpen([]);
         setClosed([]);
+        setIpoApiConfigured(false);
+        setIpoError("Failed to fetch IPO data");
       } finally {
         setLoading(false);
       }
@@ -84,16 +91,35 @@ export default function IPOPage() {
       <div className="fixed inset-0 grid-bg z-0" />
       <ParticleBackground />
 
+      {/* Dynamic Subpage Orbs */}
+      <motion.div
+        className="fixed top-1/4 -left-32 w-96 h-96 bg-cyan-600/20 rounded-full blur-[120px] pointer-events-none z-0"
+        animate={{ y: [0, 40, 0], x: [0, 30, 0], opacity: [0.3, 0.6, 0.3] }}
+        transition={{ duration: 15, repeat: Infinity, ease: "easeInOut" }}
+      />
+      <motion.div
+        className="fixed bottom-1/4 -right-32 w-96 h-96 bg-purple-600/20 rounded-full blur-[120px] pointer-events-none z-0"
+        animate={{ y: [0, -50, 0], x: [0, -30, 0], opacity: [0.3, 0.6, 0.3] }}
+        transition={{ duration: 18, repeat: Infinity, ease: "easeInOut", delay: 2 }}
+      />
+
       <div className="relative z-10 py-8 px-6 max-w-7xl mx-auto">
         <motion.h1
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
+          initial={{ opacity: 0, x: -30 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.7, ease: "easeOut" }}
           className="text-4xl font-bold gradient-text mb-8"
         >
           IPO Section
         </motion.h1>
 
-        <GlassCard className="mb-8">
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-50px" }}
+          transition={{ duration: 0.6 }}
+        >
+          <GlassCard className="mb-8">
           <h2 className="text-xl font-bold mb-6 text-cyan-400">Upcoming IPOs</h2>
           {loading ? (
             <div className="grid md:grid-cols-3 gap-6">
@@ -101,9 +127,9 @@ export default function IPOPage() {
                 <div key={i} className="h-40 bg-white/5 rounded-xl animate-pulse" />
               ))}
             </div>
-          ) : upcoming.length > 0 ? (
+          ) : upcomingDisplay.length > 0 ? (
             <div className="grid md:grid-cols-3 gap-6">
-              {upcoming.map((ipo, i) => (
+              {upcomingDisplay.map((ipo, i) => (
                 <motion.div
                   key={ipo.id ?? ipo.name ?? i}
                   initial={{ opacity: 0, y: 20 }}
@@ -116,7 +142,7 @@ export default function IPOPage() {
                   {ipo.openDate && <p className="text-sm text-zinc-400 mb-1">Open: {ipo.openDate}</p>}
                   {ipo.closeDate && <p className="text-sm text-zinc-400 mb-4">Close: {ipo.closeDate}</p>}
                   <motion.button
-                    className="w-full py-3 rounded-lg bg-cyan-500/20 text-cyan-400 border border-cyan-500/50 font-medium"
+                    className="w-full py-3 rounded-lg bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 font-medium"
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                     onClick={() => handleApply(ipo.name)}
@@ -128,13 +154,21 @@ export default function IPOPage() {
             </div>
           ) : (
             <p className="text-zinc-500 text-sm">
-              No upcoming IPOs. Add IPO_ALERTS_API_KEY to .env.local for live IPO data from ipoalerts.in
+              {!ipoApiConfigured
+                ? "No upcoming IPOs. Add IPO_ALERTS_API_KEY (or STOCKIPOALERT_API_KEY) to .env.local for live IPO data from ipoalerts.in"
+                : ipoError
+                  ? `Live IPO API error: ${ipoError}`
+                  : "No upcoming IPOs right now (live API is connected)."}
             </p>
           )}
+          {upcoming.length === 0 && open.length > 0 && (
+            <p className="text-xs text-zinc-500 mt-3">Showing currently open IPOs here because upcoming feed is empty on current plan.</p>
+          )}
         </GlassCard>
+        </motion.div>
 
         <GlassCard className="mb-8">
-          <h2 className="text-xl font-bold mb-6 text-purple-400">Current IPOs</h2>
+          <h2 className="text-xl font-bold mb-6 text-white">Current IPOs</h2>
           {open.length > 0 ? (
             <div className="grid md:grid-cols-3 gap-6">
               {open.map((ipo, i) => (
@@ -144,7 +178,7 @@ export default function IPOPage() {
                   {ipo.openDate && <p className="text-sm text-zinc-400 mb-1">Open: {ipo.openDate}</p>}
                   {ipo.closeDate && <p className="text-sm text-zinc-400 mb-4">Close: {ipo.closeDate}</p>}
                   <motion.button
-                    className="w-full py-3 rounded-lg bg-purple-500/20 text-purple-400 border border-purple-500/50 font-medium"
+                    className="w-full py-3 rounded-lg bg-white/10 text-white border border-white/20 font-medium"
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                     onClick={() => handleApply(ipo.name)}
@@ -181,7 +215,7 @@ export default function IPOPage() {
         <GlassCard className="mb-8">
           <h2 className="text-xl font-bold mb-4">NIFTY Index (Market Context)</h2>
           {chartData.length > 0 ? (
-            <LineChart data={chartData} color="#bf00ff" height={250} />
+            <LineChart data={chartData} color="#ffffff" height={250} />
           ) : (
             <div className="h-[250px] flex items-center justify-center text-zinc-500">Loading…</div>
           )}
@@ -222,7 +256,7 @@ export default function IPOPage() {
                   </div>
                   <div className="flex gap-3">
                     <motion.button
-                      className="flex-1 py-3 rounded-xl bg-cyan-500/20 text-cyan-400 border border-cyan-500/50"
+                      className="flex-1 py-3 rounded-xl bg-cyan-500/10 text-cyan-400 border border-cyan-500/30"
                       onClick={handleUPIConfirm}
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
@@ -256,7 +290,7 @@ export default function IPOPage() {
                     </p>
                   </div>
                   <motion.button
-                    className="w-full py-3 rounded-xl bg-cyan-500/20 text-cyan-400 border border-cyan-500/50"
+                    className="w-full py-3 rounded-xl bg-cyan-500/10 text-cyan-400 border border-cyan-500/30"
                     onClick={() => setApplyFlow("idle")}
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}

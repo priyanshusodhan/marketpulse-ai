@@ -5,7 +5,7 @@ export async function GET() {
   try {
     const data = await fetchIpos();
     return NextResponse.json(data);
-  } catch (e) {
+  } catch {
     return NextResponse.json({ upcoming: [], open: [], closed: [] });
   }
 }

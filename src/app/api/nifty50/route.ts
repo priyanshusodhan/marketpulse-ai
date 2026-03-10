@@ -5,7 +5,7 @@ export async function GET() {
   try {
     const data = await fetchNifty50();
     return NextResponse.json(data);
-  } catch (e) {
+  } catch {
     return NextResponse.json([]);
   }
 }

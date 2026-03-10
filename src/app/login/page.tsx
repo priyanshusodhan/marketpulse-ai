@@ -42,7 +42,7 @@ export default function LoginPage() {
           </div>
 
           <motion.button
-            className="w-full mt-6 py-3 rounded-xl bg-gradient-to-r from-cyan-500 to-purple-600 text-white font-semibold"
+            className="w-full mt-6 py-3 rounded-xl bg-gradient-to-r from-white/10 to-white/5 border border-white/20 text-white font-semibold"
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
           >

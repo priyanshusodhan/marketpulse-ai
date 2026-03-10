@@ -5,7 +5,7 @@ export async function GET() {
   try {
     const { gainers, losers } = await fetchMovers();
     return NextResponse.json({ gainers, losers });
-  } catch (e) {
+  } catch {
     return NextResponse.json({ gainers: [], losers: [] });
   }
 }

@@ -5,7 +5,7 @@ export async function GET() {
   try {
     const data = await fetchIndices();
     return NextResponse.json(data);
-  } catch (e) {
+  } catch {
     return NextResponse.json([], { status: 200 });
   }
 }

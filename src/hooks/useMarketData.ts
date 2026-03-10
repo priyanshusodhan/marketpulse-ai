@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 
 const POLL_INTERVAL = 10 * 1000; // 10 seconds
 
@@ -11,12 +11,24 @@ export function useIndices() {
 
   const fetchData = useCallback(async () => {
     try {
-      const res = await fetch("/api/indices");
+      const res = await fetch("/api/indices", { cache: "no-store" });
       const json = await res.json();
-      setData(Array.isArray(json) ? json : []);
-      setError(null);
-    } catch (e) {
-      setError("Failed to load");
+      if (Array.isArray(json) && json.length > 0) {
+        setData(json);
+        setError(null);
+      } else {
+        setData((prev) => {
+          if (prev.length === 0) {
+            setError("Live index data unavailable");
+          }
+          return prev;
+        });
+      }
+    } catch {
+      setData((prev) => {
+        if (prev.length === 0) setError("Failed to load");
+        return prev;
+      });
     } finally {
       setLoading(false);
     }
@@ -38,12 +50,16 @@ export function useMovers() {
 
   const fetchData = useCallback(async () => {
     try {
-      const res = await fetch("/api/movers");
+      const res = await fetch("/api/movers", { cache: "no-store" });
       const json = await res.json();
-      setGainers(Array.isArray(json?.gainers) ? json.gainers : []);
-      setLosers(Array.isArray(json?.losers) ? json.losers : []);
+      const nextGainers = Array.isArray(json?.gainers) ? json.gainers : [];
+      const nextLosers = Array.isArray(json?.losers) ? json.losers : [];
+      if (nextGainers.length > 0 || nextLosers.length > 0) {
+        setGainers(nextGainers);
+        setLosers(nextLosers);
+      }
     } catch {
-      // keep last
+      // Keep last known values.
     } finally {
       setLoading(false);
     }
@@ -61,19 +77,21 @@ export function useMovers() {
 export function useTicker(symbols: string[]) {
   const [data, setData] = useState<{ symbol: string; price: number; changePercent: number }[]>([]);
   const [loading, setLoading] = useState(true);
+  const symbolsKey = useMemo(() => symbols.join(","), [symbols]);
 
   const fetchData = useCallback(async () => {
-    if (symbols.length === 0) return;
+    if (!symbolsKey) return;
     try {
-      const res = await fetch(`/api/quote?symbols=${symbols.join(",")}`);
+      const res = await fetch(`/api/quote?symbols=${encodeURIComponent(symbolsKey)}`, { cache: "no-store" });
       const json = await res.json();
-      setData(Array.isArray(json) ? json : []);
+      const next = Array.isArray(json) ? json : [];
+      if (next.length > 0) setData(next);
     } catch {
-      // keep last
+      // Keep last known values.
     } finally {
       setLoading(false);
     }
-  }, [symbols.join(",")]);
+  }, [symbolsKey]);
 
   useEffect(() => {
     fetchData();
@@ -128,11 +146,14 @@ export function useNifty50() {
 
   const fetchData = useCallback(async () => {
     try {
-      const res = await fetch("/api/nifty50");
+      const res = await fetch("/api/nifty50", { cache: "no-store" });
       const json = await res.json();
-      setData(Array.isArray(json) ? json : []);
+      const next = Array.isArray(json) ? json : [];
+      if (next.length > 0) {
+        setData(next);
+      }
     } catch {
-      setData([]);
+      // Keep last known values.
     } finally {
       setLoading(false);
     }

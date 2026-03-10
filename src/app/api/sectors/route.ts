@@ -15,16 +15,20 @@ export async function GET() {
   try {
     const allSymbols = SECTOR_STOCKS.flatMap((s) => s.symbols);
     const quotes = await fetchMultipleQuotes(allSymbols);
+    if (quotes.length === 0) {
+      return NextResponse.json([]);
+    }
     const bySym = Object.fromEntries(quotes.map((q) => [q.symbol, q.changePercent]));
 
     const sectors = SECTOR_STOCKS.map((s) => {
       const changes = s.symbols.map((sym) => bySym[sym]).filter((c) => c != null);
-      const avg = changes.length ? changes.reduce((a, b) => a + b, 0) / changes.length : 0;
+      if (!changes.length) return null;
+      const avg = changes.reduce((a, b) => a + b, 0) / changes.length;
       return { name: s.name, change: avg, color: s.color };
-    });
+    }).filter((s): s is { name: string; change: number; color: string } => s != null);
 
     return NextResponse.json(sectors);
-  } catch (e) {
+  } catch {
     return NextResponse.json([]);
   }
 }

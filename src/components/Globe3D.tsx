@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useEffect, Suspense } from "react";
+import { useRef, useEffect } from "react";
 import { motion } from "framer-motion";
 
 export default function Globe3D() {
@@ -24,7 +24,7 @@ export default function Globe3D() {
 
       const geometry = new THREE.SphereGeometry(1, 32, 32);
       const material = new THREE.MeshPhongMaterial({
-        color: 0x00f5ff,
+        color: 0xf5c518,
         transparent: true,
         opacity: 0.15,
         wireframe: true,
@@ -32,7 +32,7 @@ export default function Globe3D() {
       const sphere = new THREE.Mesh(geometry, material);
       scene.add(sphere);
 
-      const light = new THREE.PointLight(0x00f5ff, 1, 100);
+      const light = new THREE.PointLight(0xf5c518, 1, 100);
       light.position.set(5, 5, 5);
       scene.add(light);
       scene.add(new THREE.AmbientLight(0x404040));

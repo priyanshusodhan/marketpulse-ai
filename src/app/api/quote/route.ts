@@ -17,7 +17,7 @@ export async function GET(request: Request) {
       return NextResponse.json(data ?? {});
     }
     return NextResponse.json({ error: "Missing symbol or symbols" }, { status: 400 });
-  } catch (e) {
+  } catch {
     return NextResponse.json({}, { status: 500 });
   }
 }
