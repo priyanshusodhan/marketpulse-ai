@@ -1,12 +1,50 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { SECTOR_PERFORMANCE } from "@/utils/mockData";
+
+interface Sector {
+  name: string;
+  change: number;
+  color: string;
+}
 
 export default function MarketHeatmap() {
+  const [sectors, setSectors] = useState<Sector[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const res = await fetch("/api/sectors");
+        const json = await res.json();
+        setSectors(Array.isArray(json) ? json : []);
+      } catch {
+        setSectors([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+    const id = setInterval(fetchData, 30 * 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  if (loading && sectors.length === 0) {
+    return (
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
+        {[1, 2, 3, 4, 5, 6, 7].map((i) => (
+          <div key={i} className="h-20 bg-white/5 rounded-xl animate-pulse" />
+        ))}
+      </div>
+    );
+  }
+
+  if (sectors.length === 0) return <p className="text-zinc-500 text-sm">No sector data</p>;
+
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
-      {SECTOR_PERFORMANCE.map((sector, i) => (
+      {sectors.map((sector, i) => (
         <motion.div
           key={sector.name}
           initial={{ opacity: 0, scale: 0.8 }}
@@ -33,7 +71,7 @@ export default function MarketHeatmap() {
               sector.change >= 0 ? "text-emerald-400" : "text-red-400"
             }`}
           >
-            {sector.change >= 0 ? "+" : ""}{sector.change}%
+            {sector.change >= 0 ? "+" : ""}{sector.change.toFixed(2)}%
           </p>
         </motion.div>
       ))}

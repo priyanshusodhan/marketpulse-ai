@@ -4,37 +4,50 @@ import { motion } from "framer-motion";
 import ParticleBackground from "@/components/ParticleBackground";
 import GlassCard from "@/components/GlassCard";
 import MarketHeatmap from "@/charts/MarketHeatmap";
-import { GAINERS, LOSERS, SECTOR_PERFORMANCE } from "@/utils/mockData";
+import { useMovers } from "@/hooks/useMarketData";
 
 export default function InsightsPage() {
+  const { gainers, losers, loading, refresh } = useMovers();
+
+  const bullPct = gainers.length > losers.length ? 68 : gainers.length < losers.length ? 32 : 50;
+
   return (
     <div className="min-h-screen relative">
       <div className="fixed inset-0 grid-bg z-0" />
       <ParticleBackground />
 
       <div className="relative z-10 py-8 px-6 max-w-7xl mx-auto">
-        <motion.h1
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-4xl font-bold gradient-text mb-8"
-        >
-          Market Insights
-        </motion.h1>
+        <div className="flex flex-wrap justify-between items-center gap-4 mb-8">
+          <motion.h1
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-4xl font-bold gradient-text"
+          >
+            Market Insights
+          </motion.h1>
+          <motion.button
+            onClick={refresh}
+            className="px-4 py-2 rounded-lg glass border border-cyan-500/30 text-cyan-400 text-sm"
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+          >
+            ⟳ Refresh
+          </motion.button>
+        </div>
 
-        {/* Bull vs Bear Meter */}
         <GlassCard className="mb-8">
           <h2 className="text-xl font-bold mb-6">Bull vs Bear Sentiment Meter</h2>
           <div className="flex flex-col md:flex-row gap-8 items-center">
             <div className="flex-1 w-full">
               <div className="flex justify-between text-sm mb-2">
                 <span className="text-emerald-400 font-medium">Bullish</span>
-                <span className="text-zinc-400">68%</span>
+                <span className="text-zinc-400">{bullPct}%</span>
               </div>
               <div className="h-6 rounded-full bg-zinc-800 overflow-hidden flex">
                 <motion.div
                   className="h-full bg-gradient-to-r from-emerald-600 to-emerald-400 rounded-l-full"
                   initial={{ width: 0 }}
-                  animate={{ width: "68%" }}
+                  animate={{ width: `${bullPct}%` }}
                   transition={{ duration: 1, delay: 0.2 }}
                 />
                 <motion.div
@@ -46,7 +59,7 @@ export default function InsightsPage() {
               </div>
               <div className="flex justify-between text-sm mt-2">
                 <span className="text-red-400 font-medium">Bearish</span>
-                <span className="text-zinc-400">32%</span>
+                <span className="text-zinc-400">{100 - bullPct}%</span>
               </div>
             </div>
             <div className="text-center">
@@ -56,14 +69,13 @@ export default function InsightsPage() {
                 transition={{ type: "spring", delay: 0.5 }}
                 className="w-24 h-24 rounded-full bg-emerald-500/20 border-2 border-emerald-500/50 flex items-center justify-center"
               >
-                <span className="text-2xl font-bold text-emerald-400">Bull</span>
+                <span className="text-2xl font-bold text-emerald-400">{bullPct >= 50 ? "Bull" : "Bear"}</span>
               </motion.div>
-              <p className="text-sm text-zinc-500 mt-2">Market leaning bullish</p>
+              <p className="text-sm text-zinc-500 mt-2">Market leaning {bullPct >= 50 ? "bullish" : "bearish"}</p>
             </div>
           </div>
         </GlassCard>
 
-        {/* Sector Performance */}
         <GlassCard className="mb-8">
           <h2 className="text-xl font-bold mb-6">Sector Performance</h2>
           <MarketHeatmap />
@@ -72,41 +84,56 @@ export default function InsightsPage() {
         <div className="grid md:grid-cols-2 gap-8 mb-8">
           <GlassCard>
             <h3 className="text-lg font-bold mb-4 text-emerald-400">Top Gainers</h3>
-            <div className="space-y-3">
-              {GAINERS.map((s, i) => (
-                <motion.div
-                  key={s.symbol}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: i * 0.05 }}
-                  className="flex justify-between items-center py-2 border-b border-white/5"
-                >
-                  <span className="font-mono">{s.symbol}</span>
-                  <span className="text-emerald-400 font-medium">+{s.change}%</span>
-                </motion.div>
-              ))}
-            </div>
+            {loading && gainers.length === 0 ? (
+              <div className="space-y-2">
+                {[1, 2, 3, 4, 5].map((i) => (
+                  <div key={i} className="h-10 bg-white/5 rounded animate-pulse" />
+                ))}
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {gainers.map((s, i) => (
+                  <motion.div
+                    key={s.symbol}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: i * 0.03 }}
+                    className="flex justify-between items-center py-2 border-b border-white/5"
+                  >
+                    <span className="font-mono">{s.symbol}</span>
+                    <span className="text-emerald-400 font-medium">+{Number(s.changePercent).toFixed(2)}%</span>
+                  </motion.div>
+                ))}
+              </div>
+            )}
           </GlassCard>
           <GlassCard>
             <h3 className="text-lg font-bold mb-4 text-red-400">Top Losers</h3>
-            <div className="space-y-3">
-              {LOSERS.map((s, i) => (
-                <motion.div
-                  key={s.symbol}
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: i * 0.05 }}
-                  className="flex justify-between items-center py-2 border-b border-white/5"
-                >
-                  <span className="font-mono">{s.symbol}</span>
-                  <span className="text-red-400 font-medium">{s.change}%</span>
-                </motion.div>
-              ))}
-            </div>
+            {loading && losers.length === 0 ? (
+              <div className="space-y-2">
+                {[1, 2, 3, 4, 5].map((i) => (
+                  <div key={i} className="h-10 bg-white/5 rounded animate-pulse" />
+                ))}
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {losers.map((s, i) => (
+                  <motion.div
+                    key={s.symbol}
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: i * 0.03 }}
+                    className="flex justify-between items-center py-2 border-b border-white/5"
+                  >
+                    <span className="font-mono">{s.symbol}</span>
+                    <span className="text-red-400 font-medium">{Number(s.changePercent).toFixed(2)}%</span>
+                  </motion.div>
+                ))}
+              </div>
+            )}
           </GlassCard>
         </div>
 
-        {/* Market Sentiment Summary */}
         <GlassCard>
           <h2 className="text-xl font-bold mb-4">Market Sentiment Summary</h2>
           <div className="grid md:grid-cols-3 gap-6">

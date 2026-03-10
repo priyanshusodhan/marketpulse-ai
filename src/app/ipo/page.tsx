@@ -1,20 +1,57 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import ParticleBackground from "@/components/ParticleBackground";
 import GlassCard from "@/components/GlassCard";
 import LineChart from "@/charts/LineChart";
-import { UPCOMING_IPOS, CURRENT_IPOS, CLOSED_IPOS } from "@/utils/mockData";
-import { generateLineData } from "@/utils/mockData";
+
+interface IpoItem {
+  id?: string;
+  name: string;
+  symbol?: string;
+  priceBand?: string;
+  openDate?: string;
+  closeDate?: string;
+  listedPrice?: number;
+}
 
 export default function IPOPage() {
+  const [upcoming, setUpcoming] = useState<IpoItem[]>([]);
+  const [open, setOpen] = useState<IpoItem[]>([]);
+  const [closed, setClosed] = useState<IpoItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [chartData, setChartData] = useState<{ x: number; y: number }[]>([]);
   const [applyFlow, setApplyFlow] = useState<"idle" | "upi" | "confirm">("idle");
   const [selectedIpo, setSelectedIpo] = useState<string | null>(null);
   const [upiId, setUpiId] = useState("");
   const [amount, setAmount] = useState("");
   const [saving, setSaving] = useState(false);
-  const ipoHistoryData = generateLineData(20);
+
+  useEffect(() => {
+    const fetchIpos = async () => {
+      try {
+        const res = await fetch("/api/ipo");
+        const json = await res.json();
+        setUpcoming(Array.isArray(json?.upcoming) ? json.upcoming : []);
+        setOpen(Array.isArray(json?.open) ? json.open : []);
+        setClosed(Array.isArray(json?.closed) ? json.closed : []);
+      } catch {
+        setUpcoming([]);
+        setOpen([]);
+        setClosed([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchIpos();
+    const res = fetch("/api/stock?symbol=NIFTY&range=1M");
+    res.then((r) => r.json()).then((d) => {
+      if (Array.isArray(d) && d.length > 0) {
+        setChartData(d.map((x: { close: number }, i: number) => ({ x: i, y: x.close })));
+      }
+    });
+  }, []);
 
   const handleApply = (name: string) => {
     setSelectedIpo(name);
@@ -35,7 +72,7 @@ export default function IPOPage() {
         }),
       });
     } catch {
-      // ignore – demo only
+      // ignore
     } finally {
       setSaving(false);
       setApplyFlow("confirm");
@@ -56,80 +93,100 @@ export default function IPOPage() {
           IPO Section
         </motion.h1>
 
-        {/* Upcoming IPOs */}
         <GlassCard className="mb-8">
           <h2 className="text-xl font-bold mb-6 text-cyan-400">Upcoming IPOs</h2>
-          <div className="grid md:grid-cols-3 gap-6">
-            {UPCOMING_IPOS.map((ipo, i) => (
-              <motion.div
-                key={ipo.name}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.1 }}
-                className="glass rounded-xl p-6 glass-hover"
-              >
-                <h3 className="font-bold text-lg mb-2">{ipo.name}</h3>
-                <p className="text-sm text-zinc-400 mb-1">Price Band: {ipo.priceBand}</p>
-                <p className="text-sm text-zinc-400 mb-1">Open: {ipo.open}</p>
-                <p className="text-sm text-zinc-400 mb-4">Close: {ipo.close}</p>
-                <motion.button
-                  className="w-full py-3 rounded-lg bg-cyan-500/20 text-cyan-400 border border-cyan-500/50 font-medium"
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={() => handleApply(ipo.name)}
+          {loading ? (
+            <div className="grid md:grid-cols-3 gap-6">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="h-40 bg-white/5 rounded-xl animate-pulse" />
+              ))}
+            </div>
+          ) : upcoming.length > 0 ? (
+            <div className="grid md:grid-cols-3 gap-6">
+              {upcoming.map((ipo, i) => (
+                <motion.div
+                  key={ipo.id ?? ipo.name ?? i}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.1 }}
+                  className="glass rounded-xl p-6 glass-hover"
                 >
-                  Apply
-                </motion.button>
-              </motion.div>
-            ))}
-          </div>
+                  <h3 className="font-bold text-lg mb-2">{ipo.name}</h3>
+                  {ipo.priceBand && <p className="text-sm text-zinc-400 mb-1">Price Band: {ipo.priceBand}</p>}
+                  {ipo.openDate && <p className="text-sm text-zinc-400 mb-1">Open: {ipo.openDate}</p>}
+                  {ipo.closeDate && <p className="text-sm text-zinc-400 mb-4">Close: {ipo.closeDate}</p>}
+                  <motion.button
+                    className="w-full py-3 rounded-lg bg-cyan-500/20 text-cyan-400 border border-cyan-500/50 font-medium"
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => handleApply(ipo.name)}
+                  >
+                    Apply
+                  </motion.button>
+                </motion.div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-zinc-500 text-sm">
+              No upcoming IPOs. Add IPO_ALERTS_API_KEY to .env.local for live IPO data from ipoalerts.in
+            </p>
+          )}
         </GlassCard>
 
-        {/* Current IPOs */}
         <GlassCard className="mb-8">
           <h2 className="text-xl font-bold mb-6 text-purple-400">Current IPOs</h2>
-          <div className="grid md:grid-cols-3 gap-6">
-            {CURRENT_IPOS.map((ipo) => (
-              <div key={ipo.name} className="glass rounded-xl p-6">
-                <h3 className="font-bold text-lg mb-2">{ipo.name}</h3>
-                <p className="text-sm text-zinc-400 mb-1">Price Band: {ipo.priceBand}</p>
-                <p className="text-sm text-zinc-400 mb-1">Open: {ipo.open}</p>
-                <p className="text-sm text-zinc-400 mb-4">Close: {ipo.close}</p>
-                <motion.button
-                  className="w-full py-3 rounded-lg bg-purple-500/20 text-purple-400 border border-purple-500/50 font-medium"
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={() => handleApply(ipo.name)}
-                >
-                  Apply
-                </motion.button>
-              </div>
-            ))}
-          </div>
+          {open.length > 0 ? (
+            <div className="grid md:grid-cols-3 gap-6">
+              {open.map((ipo, i) => (
+                <div key={ipo.id ?? ipo.name ?? i} className="glass rounded-xl p-6">
+                  <h3 className="font-bold text-lg mb-2">{ipo.name}</h3>
+                  {ipo.priceBand && <p className="text-sm text-zinc-400 mb-1">Price Band: {ipo.priceBand}</p>}
+                  {ipo.openDate && <p className="text-sm text-zinc-400 mb-1">Open: {ipo.openDate}</p>}
+                  {ipo.closeDate && <p className="text-sm text-zinc-400 mb-4">Close: {ipo.closeDate}</p>}
+                  <motion.button
+                    className="w-full py-3 rounded-lg bg-purple-500/20 text-purple-400 border border-purple-500/50 font-medium"
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => handleApply(ipo.name)}
+                  >
+                    Apply
+                  </motion.button>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-zinc-500 text-sm">No open IPOs</p>
+          )}
         </GlassCard>
 
-        {/* Closed IPOs */}
         <GlassCard className="mb-8">
           <h2 className="text-xl font-bold mb-6 text-zinc-400">Closed IPOs</h2>
-          <div className="grid md:grid-cols-2 gap-6">
-            {CLOSED_IPOS.map((ipo) => (
-              <div key={ipo.name} className="glass rounded-xl p-6">
-                <h3 className="font-bold text-lg mb-2">{ipo.name}</h3>
-                <p className="text-sm text-zinc-400 mb-1">Price Band: {ipo.priceBand}</p>
-                <p className="text-sm text-zinc-400 mb-1">Listed: ₹{ipo.listedPrice}</p>
-                <p className="text-sm text-emerald-400">Current: ₹{ipo.currentPrice}</p>
-              </div>
-            ))}
-          </div>
+          {closed.length > 0 ? (
+            <div className="grid md:grid-cols-2 gap-6">
+              {closed.map((ipo, i) => (
+                <div key={ipo.id ?? ipo.name ?? i} className="glass rounded-xl p-6">
+                  <h3 className="font-bold text-lg mb-2">{ipo.name}</h3>
+                  {ipo.priceBand && <p className="text-sm text-zinc-400 mb-1">Price Band: {ipo.priceBand}</p>}
+                  {ipo.listedPrice != null && (
+                    <p className="text-sm text-zinc-400">Listed: ₹{ipo.listedPrice}</p>
+                  )}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-zinc-500 text-sm">No closed IPO data</p>
+          )}
         </GlassCard>
 
-        {/* IPO History Chart */}
         <GlassCard className="mb-8">
-          <h2 className="text-xl font-bold mb-4">IPO Performance History</h2>
-          <LineChart data={ipoHistoryData} color="#bf00ff" height={250} />
+          <h2 className="text-xl font-bold mb-4">NIFTY Index (Market Context)</h2>
+          {chartData.length > 0 ? (
+            <LineChart data={chartData} color="#bf00ff" height={250} />
+          ) : (
+            <div className="h-[250px] flex items-center justify-center text-zinc-500">Loading…</div>
+          )}
         </GlassCard>
 
-        {/* Mock Application Flow Modal */}
         {(applyFlow === "upi" || applyFlow === "confirm") && (
           <motion.div
             initial={{ opacity: 0 }}
@@ -146,9 +203,7 @@ export default function IPOPage() {
               {applyFlow === "upi" ? (
                 <>
                   <h3 className="text-xl font-bold mb-4">UPI Payment Authorization</h3>
-                  <p className="text-zinc-400 text-sm mb-4">
-                    Authorize payment for {selectedIpo} IPO application
-                  </p>
+                  <p className="text-zinc-400 text-sm mb-4">Authorize payment for {selectedIpo} IPO application</p>
                   <div className="space-y-3 mb-6">
                     <input
                       type="text"
@@ -172,7 +227,7 @@ export default function IPOPage() {
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
                     >
-                      {saving ? "Authorizing..." : "Authorize"}
+                      {saving ? "Authorizing…" : "Authorize"}
                     </motion.button>
                     <motion.button
                       className="flex-1 py-3 rounded-xl glass text-zinc-400"

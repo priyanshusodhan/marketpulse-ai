@@ -1,20 +1,42 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import ParticleBackground from "@/components/ParticleBackground";
 import CandlestickBackground from "@/components/CandlestickBackground";
 import StockTicker from "@/components/StockTicker";
 import GlassCard from "@/components/GlassCard";
-import { INDICES, generateCandleData, generateLineData } from "@/utils/mockData";
+import { useIndices } from "@/hooks/useMarketData";
 import LineChart from "@/charts/LineChart";
 import CandlestickChart from "@/charts/CandlestickChart";
 import Globe3D from "@/components/Globe3D";
 
 export default function HomePage() {
-  const chartData = generateLineData(40);
-  const deepTrendData = generateLineData(80);
-  const scrollCandleData = generateCandleData(40);
+  const { data: indicesData } = useIndices();
+  const [chartData, setChartData] = useState<{ x: number; y: number }[]>([]);
+  const [scrollCandleData, setScrollCandleData] = useState<{ time: number; open: number; high: number; low: number; close: number }[]>([]);
+
+  useEffect(() => {
+    fetch("/api/stock?symbol=NIFTY&range=1M")
+      .then((r) => r.json())
+      .then((d) => {
+        if (Array.isArray(d) && d.length > 0) {
+          setChartData(d.map((x: { close: number }, i: number) => ({ x: i, y: x.close })));
+        }
+      })
+      .catch(() => {});
+  }, []);
+  useEffect(() => {
+    fetch("/api/stock?symbol=RELIANCE&range=1M")
+      .then((r) => r.json())
+      .then((d) => {
+        if (Array.isArray(d) && d.length > 0) setScrollCandleData(d);
+      })
+      .catch(() => {});
+  }, []);
+
+  const indices = indicesData;
 
   return (
     <div className="min-h-screen relative overflow-hidden">
@@ -91,9 +113,13 @@ export default function HomePage() {
           transition={{ delay: 1, duration: 0.6 }}
           className="w-full max-w-2xl mt-16 mx-auto"
         >
-          <GlassCard hover={false} tilt={false}>
-            <p className="text-sm text-zinc-400 mb-4">Market Trend Preview</p>
-            <LineChart data={chartData} color="#00f5ff" height={180} />
+            <GlassCard hover={false} tilt={false}>
+            <p className="text-sm text-zinc-400 mb-4">Market Trend Preview (NIFTY)</p>
+            {chartData.length > 0 ? (
+              <LineChart data={chartData} color="#00f5ff" height={180} />
+            ) : (
+              <div className="h-[180px] flex items-center justify-center text-zinc-500">Loading…</div>
+            )}
           </GlassCard>
         </motion.div>
       </section>
@@ -109,7 +135,7 @@ export default function HomePage() {
           Live Indices
         </motion.h2>
         <div className="max-w-5xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-4">
-          {INDICES.map((index, i) => (
+          {indices.length > 0 ? indices.map((index: { symbol: string; value: number; change: number; changePercent: number }, i: number) => (
             <GlassCard key={index.symbol} delay={i * 0.1}>
               <p className="text-sm text-zinc-400">{index.symbol}</p>
               <p className="text-2xl font-bold text-white mt-1">
@@ -119,7 +145,9 @@ export default function HomePage() {
                 {index.change >= 0 ? "+" : ""}{index.change} ({index.changePercent}%)
               </p>
             </GlassCard>
-          ))}
+          )) : (
+            <div className="col-span-4 text-center text-zinc-500 py-8">Loading live indices…</div>
+          )}
         </div>
       </section>
 
@@ -144,11 +172,15 @@ export default function HomePage() {
               <p className="text-sm text-cyan-400 mb-2 font-mono tracking-wide uppercase">
                 Dynamic Price Action
               </p>
-              <h3 className="text-2xl font-bold mb-4">Intraday Liquidity Waves</h3>
-              <CandlestickChart data={scrollCandleData} height={260} />
+              <h3 className="text-2xl font-bold mb-4">RELIANCE - Candlestick</h3>
+              {scrollCandleData.length > 0 ? (
+                <CandlestickChart data={scrollCandleData} height={260} />
+              ) : (
+                <div className="h-[260px] flex items-center justify-center text-zinc-500">Loading…</div>
+              )}
               <div className="mt-6">
-                <p className="text-xs text-zinc-500 mb-2">Order flow pressure index</p>
-                <LineChart data={deepTrendData} color="#00f5ff" height={120} />
+                <p className="text-xs text-zinc-500 mb-2">NIFTY trend preview</p>
+                {chartData.length > 0 ? <LineChart data={chartData} color="#00f5ff" height={120} /> : <div className="h-[120px] flex items-center justify-center text-zinc-500 text-sm">Loading…</div>}
               </div>
             </GlassCard>
           </motion.div>

@@ -17,7 +17,19 @@ MarketPulse AI is a **futuristic stock-market intelligence dashboard** with a pr
 - **3D**: Three.js (globe)
 - **Backend**: Next.js Route Handlers (Node runtime)
 - **Database**: MongoDB (Mongoose)
-- **Market Data**: Yahoo Finance (no key), Alpha Vantage (optional)
+- **Market Data**: Yahoo Finance (primary, no key), Alpha Vantage & Finnhub (optional fallbacks), ipoalerts.in (IPO data)
+
+## Environment Variables
+
+Copy `.env.example` to `.env.local`:
+
+```bash
+MONGODB_URI=mongodb://localhost:27017/marketpulse-ai
+NEXTAUTH_URL=http://localhost:3000
+IPO_ALERTS_API_KEY=   # optional - for live IPO data from ipoalerts.in
+ALPHA_VANTAGE_API_KEY= # optional - fallback
+FINNHUB_API_KEY=      # optional - fallback
+```
 
 ## Pages
 
@@ -33,10 +45,16 @@ MarketPulse AI is a **futuristic stock-market intelligence dashboard** with a pr
 ## API Routes (Backend)
 
 - `GET /api/health` — DB connectivity check
-- `GET /api/stock?symbol=RELIANCE&range=1mo` — Stock data (Yahoo Finance → fallback mock)
-- `GET /api/portfolio` — Get demo portfolio (MongoDB)
+- `GET /api/indices` — NIFTY 50, SENSEX, NSE, BSE
+- `GET /api/quote?symbol=RELIANCE` or `?symbols=A,B` — Live quotes
+- `GET /api/stock?symbol=RELIANCE&range=1D|1W|1M|6M|1Y|5Y` — Candlestick + volume (Yahoo Finance)
+- `GET /api/movers` — Gainers / losers
+- `GET /api/nifty50` — NIFTY 50 stocks
+- `GET /api/sectors` — Sector performance
+- `GET /api/ipo` — IPO list (requires `IPO_ALERTS_API_KEY`)
+- `GET /api/portfolio` — Portfolio (MongoDB + live prices)
 - `POST /api/portfolio` — Update holdings (MongoDB)
-- `POST /api/ipo/apply` — Save IPO application (MongoDB)
+- `POST /api/ipo/apply` — IPO application (MongoDB)
 
 ## Local Setup (recommended)
 
@@ -107,8 +125,9 @@ src/
 ## Notes / Roadmap
 
 - **Auth**: Hook `/portfolio` to real users via NextAuth session (currently demo user id).
-- **Real-time**: Add websocket/SSE polling for live prices.
-- **AI**: Replace placeholders with a real prediction service (Python or Node inference).
+- **Real-time**: 10-second polling for indices, movers, NIFTY 50, and quotes.
+- **Caching**: 45s for quotes, 5min for charts to limit API calls.
+- **AI**: Replace placeholders with a real prediction service.
 
 ## License
 
